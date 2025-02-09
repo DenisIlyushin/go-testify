@@ -102,6 +102,7 @@ func TestMainHandlerForBadRequest(t *testing.T) {
 	}
 }
 
+// Проверяет ответ при отсутствии параметра count
 func TestMainHandlerWhenCountIsMissing(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodGet,
