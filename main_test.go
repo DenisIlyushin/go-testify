@@ -49,27 +49,6 @@ func TestMainHandler(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedBody:   strings.Join(cafeList["moscow"], ","),
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(
-				http.MethodGet,
-				generateUri(tt.count, tt.city),
-				nil,
-			)
-
-			response := getResponse(req)
-
-			require.Equal(t, tt.expectedStatus, response.Code)
-			assert.ElementsMatch(t, cafeList["moscow"], strings.Split(response.Body.String(), ","))
-		})
-	}
-}
-
-// Реализует тесты при ответе с ошибками
-func TestMainHandlerForBadRequest(t *testing.T) {
-	tests := []test{
 		{
 			name:           "Unsupported city",
 			count:          1,
@@ -97,7 +76,15 @@ func TestMainHandlerForBadRequest(t *testing.T) {
 			response := getResponse(req)
 
 			require.Equal(t, tt.expectedStatus, response.Code)
-			assert.Equal(t, tt.expectedBody, response.Body.String())
+
+			switch tt.expectedStatus {
+			case http.StatusOK:
+				assert.ElementsMatch(t, cafeList["moscow"], strings.Split(response.Body.String(), ","))
+			case http.StatusBadRequest:
+				assert.Equal(t, tt.expectedBody, response.Body.String())
+			default:
+				assert.Equal(t, "", response.Body.String())
+			}
 		})
 	}
 }
@@ -116,7 +103,7 @@ func TestMainHandlerWhenCountIsMissing(t *testing.T) {
 		t,
 		http.StatusBadRequest,
 		response.Code,
-		"Сервис должен возвращать код ответа 400 при отсутствии параметра city",
+		"Сервис должен возвращать код ответа 400 при отсутствии параметра count",
 	)
 
 	assert.Equal(
