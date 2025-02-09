@@ -43,18 +43,18 @@ func TestMainHandler(t *testing.T) {
 			expectedBody:   strings.Join(cafeList["moscow"], ","),
 		},
 		{
-			name:           "More cafes requested than available",
-			count:          len(cafeList["moscow"]) + 1,
-			city:           "moscow",
-			expectedStatus: http.StatusOK,
-			expectedBody:   strings.Join(cafeList["moscow"], ","),
-		},
-		{
 			name:           "Unsupported city",
 			count:          1,
 			city:           "ankh-morpork",
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "wrong city value",
+		},
+		{
+			name:           "More cafes requested than available",
+			count:          len(cafeList["moscow"]) + 1,
+			city:           "moscow",
+			expectedStatus: http.StatusOK,
+			expectedBody:   strings.Join(cafeList["moscow"], ","),
 		},
 		{
 			name:           "Invalid count value",
