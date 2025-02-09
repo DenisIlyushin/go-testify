@@ -59,10 +59,10 @@ func TestMainHandler(t *testing.T) {
 				nil,
 			)
 
-			responseRecorder := getResponse(req)
+			response := getResponse(req)
 
-			require.Equal(t, tt.expectedStatus, responseRecorder.Code)
-			assert.ElementsMatch(t, cafeList["moscow"], strings.Split(responseRecorder.Body.String(), ","))
+			require.Equal(t, tt.expectedStatus, response.Code)
+			assert.ElementsMatch(t, cafeList["moscow"], strings.Split(response.Body.String(), ","))
 		})
 	}
 }
@@ -94,10 +94,10 @@ func TestMainHandlerForBadRequest(t *testing.T) {
 				nil,
 			)
 
-			responseRecorder := getResponse(req)
+			response := getResponse(req)
 
-			require.Equal(t, tt.expectedStatus, responseRecorder.Code)
-			assert.Equal(t, tt.expectedBody, responseRecorder.Body.String())
+			require.Equal(t, tt.expectedStatus, response.Code)
+			assert.Equal(t, tt.expectedBody, response.Body.String())
 		})
 	}
 }
@@ -106,22 +106,22 @@ func TestMainHandlerForBadRequest(t *testing.T) {
 func TestMainHandlerWhenCountIsMissing(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/cafe?city=moscow", // Missing city parameter
+		"/cafe?city=moscow",
 		nil,
 	)
 
-	responseRecorder := getResponse(req)
+	response := getResponse(req)
 
 	require.Equal(
 		t,
-		http.StatusBadRequest, // Expect 400 if city is required
-		responseRecorder.Code,
+		http.StatusBadRequest,
+		response.Code,
 		"Сервис должен возвращать код ответа 400 при отсутствии параметра city",
 	)
 
 	assert.Equal(
 		t,
-		"count missing", // Adjust expected error message based on your handler logic
-		responseRecorder.Body.String(),
+		"count missing",
+		response.Body.String(),
 	)
 }
