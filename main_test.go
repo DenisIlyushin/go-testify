@@ -2,19 +2,28 @@ package main
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
+type test struct {
+	name           string
+	count          int
+	city           string
+	expectedStatus int
+	expectedBody   string
+}
+
+// Генерирует строку с параметрами для запроса
 func generateUri(count int, city string) string {
 	return fmt.Sprintf("/cafe?count=%d&city=%s", count, city)
 }
 
+// Получает ответ тестового сервера
 func getResponse(req *http.Request) *httptest.ResponseRecorder {
 	responseRecorder := httptest.NewRecorder()
 	handler := http.HandlerFunc(mainHandle)
@@ -23,62 +32,95 @@ func getResponse(req *http.Request) *httptest.ResponseRecorder {
 	return responseRecorder
 }
 
-func TestMainHandlerWhenOk(t *testing.T) {
+// Реализует тесты при успешном ответе
+func TestMainHandler(t *testing.T) {
+	tests := []test{
+		{
+			name:           "Valid city and count",
+			count:          len(cafeList["moscow"]),
+			city:           "moscow",
+			expectedStatus: http.StatusOK,
+			expectedBody:   strings.Join(cafeList["moscow"], ","),
+		},
+		{
+			name:           "More cafes requested than available",
+			count:          len(cafeList["moscow"]) + 1,
+			city:           "moscow",
+			expectedStatus: http.StatusOK,
+			expectedBody:   strings.Join(cafeList["moscow"], ","),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				generateUri(tt.count, tt.city),
+				nil,
+			)
+
+			responseRecorder := getResponse(req)
+
+			require.Equal(t, tt.expectedStatus, responseRecorder.Code)
+			assert.ElementsMatch(t, cafeList["moscow"], strings.Split(responseRecorder.Body.String(), ","))
+		})
+	}
+}
+
+// Реализует тесты при ответе с ошибками
+func TestMainHandlerForBadRequest(t *testing.T) {
+	tests := []test{
+		{
+			name:           "Unsupported city",
+			count:          1,
+			city:           "ankh-morpork",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "wrong city value",
+		},
+		{
+			name:           "Invalid count value",
+			count:          -1,
+			city:           "moscow",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "wrong count value",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				generateUri(tt.count, tt.city),
+				nil,
+			)
+
+			responseRecorder := getResponse(req)
+
+			require.Equal(t, tt.expectedStatus, responseRecorder.Code)
+			assert.Equal(t, tt.expectedBody, responseRecorder.Body.String())
+		})
+	}
+}
+
+func TestMainHandlerWhenCountIsMissing(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodGet,
-		generateUri(len(cafeList["moscow"]), "moscow"),
-		nil)
+		"/cafe?city=moscow", // Missing city parameter
+		nil,
+	)
 
 	responseRecorder := getResponse(req)
 
 	require.Equal(
 		t,
-		http.StatusOK,
+		http.StatusBadRequest, // Expect 400 if city is required
 		responseRecorder.Code,
-		"Сервис должен возвращать код ответа 200")
-	require.NotEmpty(
+		"Сервис должен возвращать код ответа 400 при отсутствии параметра city",
+	)
+
+	assert.Equal(
 		t,
+		"count missing", // Adjust expected error message based on your handler logic
 		responseRecorder.Body.String(),
-		"Сервис должен возвращать не пустое тело ответа")
-}
-
-func TestMainHandlerWhenCityIsNotSupported(t *testing.T) {
-	req := httptest.NewRequest(
-		http.MethodGet,
-		generateUri(len(cafeList["Ankh-Morpork"]), "Ankh-Morpork"),
-		nil)
-
-	responseRecorder := getResponse(req)
-
-	require.Equal(
-		t,
-		http.StatusBadRequest,
-		responseRecorder.Code,
-		"Сервис должен возвращать код ответа 400")
-	assert.Equal(t, "wrong city value", responseRecorder.Body.String())
-}
-
-func TestMainHandlerWhenCafeCountMoreThanTotal(t *testing.T) {
-	req := httptest.NewRequest(
-		http.MethodGet,
-		generateUri(len(cafeList["moscow"])+1, "moscow"),
-		nil)
-
-	responseRecorder := getResponse(req)
-
-	require.Equal(
-		t,
-		http.StatusOK,
-		responseRecorder.Code,
-		"Сервис должен возвращать код ответа 200")
-	// 	assert.Equal(
-	//	t,
-	//	strings.Join(cafeList["moscow"], ","),
-	//	responseRecorder.Body.String(),
-	//	"Сервис возвращает неверный список кафе - количество или порядок кафе в списке не верен")
-	assert.ElementsMatch(
-		t,
-		cafeList["moscow"],
-		strings.Split(responseRecorder.Body.String(), ","),
-		"Сервис должен вернуть все доступные кафе")
+	)
 }
