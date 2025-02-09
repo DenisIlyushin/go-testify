@@ -89,26 +89,51 @@ func TestMainHandler(t *testing.T) {
 	}
 }
 
-// Проверяет ответ при отсутствии параметра count
-func TestMainHandlerWhenCountIsMissing(t *testing.T) {
-	req := httptest.NewRequest(
-		http.MethodGet,
-		"/cafe?city=moscow",
-		nil,
-	)
+type edgeTest struct {
+	name           string
+	uri            string
+	expectedStatus int
+	expectedBody   string
+}
 
-	response := getResponse(req)
+// Проверяет ответ при пограничных значениях,
+func TestMainHandlerWithEdgeConditions(t *testing.T) {
+	edgeTests := []edgeTest{
+		{
+			name:           "City count parameter is missing",
+			uri:            "/cafe?city=moscow",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "count missing",
+		},
+		{
+			name:           "City parameter is missing",
+			uri:            "/cafe?count=3",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "wrong city value",
+		},
+		{
+			name:           "Negative count value",
+			uri:            "/cafe?count=-1&city=moscow",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "wrong count value",
+		},
+		{
+			name:           "Non-numeric count value",
+			uri:            "/cafe?count=ahaha&city=moscow",
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "wrong count value",
+		},
+	}
 
-	require.Equal(
-		t,
-		http.StatusBadRequest,
-		response.Code,
-		"Сервис должен возвращать код ответа 400 при отсутствии параметра count",
-	)
+	for _, tt := range edgeTests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.uri, nil)
 
-	assert.Equal(
-		t,
-		"count missing",
-		response.Body.String(),
-	)
+			response := getResponse(req)
+
+			require.Equal(t, tt.expectedStatus, response.Code)
+			assert.Equal(t, tt.expectedBody, response.Body.String())
+		})
+	}
+
 }
